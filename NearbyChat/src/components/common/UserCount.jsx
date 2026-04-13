@@ -4,7 +4,7 @@ import { View, Text, StyleSheet } from 'react-native';
 export default function UserCount({ count, color }) {
   return (
     <View style={styles.container}>
-      <View style={[styles.dot, { backgroundColor: color || '#FF6B6B' }]} />
+      <View style={[styles.dot, { backgroundColor: color || '#0A84FF' }]} />
       <Text style={styles.text}>{count} en ligne</Text>
     </View>
   );

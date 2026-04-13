@@ -12,7 +12,7 @@ export const MOCK_ZONES = [
   {
     id: 'zone-001',
     name: 'Quartier Hassan',
-    color: '#FF6B6B',
+    color: '#0A84FF',
     userCount: 12,
     coordinates: [
       { latitude: 34.020, longitude: -6.841 },

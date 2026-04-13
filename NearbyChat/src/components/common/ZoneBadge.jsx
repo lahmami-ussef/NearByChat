@@ -25,6 +25,6 @@ const styles = StyleSheet.create({
   info: { flex: 1 },
   name: { color: '#fff', fontWeight: '700', fontSize: 15 },
   count: { color: '#888', fontSize: 12, marginTop: 2 },
-  btn: { backgroundColor: '#FF6B6B', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8 },
+  btn: { backgroundColor: '#0A84FF', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8 },
   btnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
 });

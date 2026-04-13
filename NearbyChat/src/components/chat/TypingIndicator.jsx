@@ -28,7 +28,7 @@ export default function TypingIndicator({ username }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 6 },
-  name: { color: '#888', fontSize: 12, fontStyle: 'italic' },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#888', marginHorizontal: 2 },
+  container: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 6, backgroundColor: '#FFFFFF' },
+  name: { color: '#666', fontSize: 12, fontStyle: 'italic' },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#999', marginHorizontal: 2 },
 });

@@ -29,7 +29,7 @@ export default function ZoneTransitionScreen({ newZone, onDone }) {
       <Animated.View style={[styles.card, { opacity, transform: [{ scale }] }]}>
         <Text style={styles.icon}>📍</Text>
         <Text style={styles.label}>Nouvelle zone</Text>
-        <View style={[styles.dot, { backgroundColor: newZone?.color || '#FF6B6B' }]} />
+        <View style={[styles.dot, { backgroundColor: newZone?.color || '#0A84FF' }]} />
         <Text style={styles.name}>{newZone?.name || 'Zone inconnue'}</Text>
         <Text style={styles.sub}>Connexion au chat local...</Text>
       </Animated.View>

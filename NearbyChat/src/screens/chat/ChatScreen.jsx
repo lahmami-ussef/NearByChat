@@ -15,41 +15,84 @@ import { MOCK_MESSAGES, MOCK_TYPING_USER } from '../../mock/mockData';
 //   socketService.on('newMessage', msg => addMessage(msg))
 //   socketService.on('userTyping', ({username}) => setTypingUser(username))
 //   socketService.on('userJoined', ({userCount}) => setUserCount(userCount))
-// Et handleSend : socketService.emit('sendMessage', { text: input })
+import socketService from '../../services/socket.service';
+import { getMessages } from '../../services/api.service';
 
 export default function ChatScreen() {
   const [input, setInput] = useState('');
   const flatListRef = useRef(null);
   const { messages, setMessages, addMessage, typingUser, setTypingUser } = useChatStore();
-  const { currentZone, userCount } = useZoneStore();
+  const { currentZone, userCount, setUserCount } = useZoneStore();
   const { user } = useAuthStore();
+  const typingTimeoutRef = useRef(null);
 
   useEffect(() => {
-    setMessages(MOCK_MESSAGES);
-    const t1 = setTimeout(() => setTypingUser(MOCK_TYPING_USER), 2000);
-    const t2 = setTimeout(() => setTypingUser(null), 5000);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
-  }, []);
+    const initChat = async () => {
+      if (currentZone) {
+        try {
+          const res = await getMessages(currentZone.id);
+          setMessages(res.data);
+          setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+        } catch (e) {
+          console.error('Failed to load messages', e);
+        }
+      }
+    };
+    initChat();
+
+    // Socket Events
+    socketService.on('newMessage', (msg) => {
+      addMessage({ ...msg, id: Date.now().toString(), isOwn: msg.username === user?.username });
+      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+    });
+
+    socketService.on('userTyping', ({ username }) => {
+      setTypingUser(username);
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = setTimeout(() => setTypingUser(null), 3000);
+    });
+
+    socketService.on('userJoined', ({ userCount, username }) => {
+      setUserCount(userCount);
+    });
+
+    socketService.on('userLeft', ({ userCount, username }) => {
+      setUserCount(userCount);
+    });
+
+    return () => {
+      socketService.off('newMessage');
+      socketService.off('userTyping');
+      socketService.off('userJoined');
+      socketService.off('userLeft');
+    };
+  }, [currentZone, user?.username]);
 
   const handleSend = () => {
-    if (!input.trim()) return;
-    addMessage({
-      id: Date.now().toString(),
+    if (!input.trim() || !currentZone) return;
+    
+    // Add locally for instant UI
+    const tempMsg = {
+      id: Date.now().toString() + '_temp',
       username: user?.username || 'Moi',
       text: input.trim(),
       createdAt: new Date().toISOString(),
       isOwn: true,
-    });
+    };
+    addMessage(tempMsg);
+    
+    // Emit to backend
+    socketService.emit('sendMessage', { text: input.trim() });
+    
     setInput('');
     setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
-    // MOCK: simulate reply
-    setTimeout(() => addMessage({
-      id: (Date.now() + 1).toString(),
-      username: 'Sara',
-      text: 'OK ! 😄',
-      createdAt: new Date().toISOString(),
-      isOwn: false,
-    }), 2500);
+  };
+  
+  const handleTyping = (text) => {
+    setInput(text);
+    if (text.length > 0) {
+      socketService.emit('typing', {});
+    }
   };
 
   return (
@@ -78,19 +121,19 @@ export default function ChatScreen() {
 
       {typingUser && <TypingIndicator username={typingUser} />}
 
-      <MessageInput value={input} onChange={setInput} onSend={handleSend} />
+      <MessageInput value={input} onChange={handleTyping} onSend={handleSend} />
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0D0D0D' },
+  container: { flex: 1, backgroundColor: '#FFFFFF' },
   header: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: '#1A1A1A', padding: 16, paddingTop: 52,
-    borderBottomWidth: 1, borderBottomColor: '#2A2A2A',
+    backgroundColor: '#FFFFFF', padding: 16, paddingTop: 52,
+    borderBottomWidth: 1, borderBottomColor: '#EEEEEE',
   },
   headerDot: { width: 12, height: 12, borderRadius: 6 },
-  headerTitle: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  headerTitle: { color: '#000', fontWeight: '700', fontSize: 16 },
   list: { padding: 16, gap: 8 },
 });

@@ -8,7 +8,8 @@ import { MOCK_USER } from '../../mock/mockData';
 
 // MOCK MODE — remplace handleRegister par l'appel réel :
 //   const res = await registerUser({ username, password });
-//   setToken(res.data.token); setUser(res.data.user);
+import { registerUser, setAuthToken } from '../../services/api.service';
+import socketService from '../../services/socket.service';
 
 export default function RegisterScreen({ navigation }) {
   const [username, setUsername] = useState('');
@@ -18,16 +19,22 @@ export default function RegisterScreen({ navigation }) {
   const [error, setError] = useState('');
   const { setUser, setToken } = useAuthStore();
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
     if (!username || !password || !confirm) { setError('Remplis tous les champs'); return; }
     if (password !== confirm) { setError('Les mots de passe ne correspondent pas'); return; }
     if (password.length < 6) { setError('Mot de passe trop court (6 min)'); return; }
     setLoading(true); setError('');
-    setTimeout(() => {
-      setToken('mock-jwt-token');
-      setUser({ ...MOCK_USER, username });
+    try {
+      const res = await registerUser({ username, password });
+      setAuthToken(res.data.access_token);
+      setToken(res.data.access_token);
+      setUser(res.data.user);
+      socketService.connect(res.data.access_token);
       setLoading(false);
-    }, 800);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Erreur lors de l\'inscription');
+      setLoading(false);
+    }
   };
 
   return (
@@ -77,9 +84,9 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 14, color: '#888', marginTop: 6 },
   form: { gap: 12 },
   input: { backgroundColor: '#1A1A1A', borderRadius: 12, padding: 16, color: '#fff', fontSize: 15, borderWidth: 1, borderColor: '#2A2A2A' },
-  btn: { backgroundColor: '#FF6B6B', borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 8 },
+  btn: { backgroundColor: '#0A84FF', borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 8 },
   btnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
   link: { textAlign: 'center', color: '#888', marginTop: 16 },
-  linkBold: { color: '#FF6B6B', fontWeight: '700' },
-  error: { color: '#FF6B6B', textAlign: 'center', fontSize: 13 },
+  linkBold: { color: '#0A84FF', fontWeight: '700' },
+  error: { color: '#0A84FF', textAlign: 'center', fontSize: 13 },
 });

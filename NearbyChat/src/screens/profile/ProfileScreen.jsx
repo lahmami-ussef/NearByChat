@@ -62,7 +62,7 @@ function formatDate(iso) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0D0D0D', padding: 24, paddingTop: 60, alignItems: 'center' },
-  avatarCircle: { width: 90, height: 90, borderRadius: 45, backgroundColor: '#FF6B6B', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  avatarCircle: { width: 90, height: 90, borderRadius: 45, backgroundColor: '#0A84FF', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
   avatarText: { color: '#fff', fontSize: 32, fontWeight: '800' },
   username: { color: '#fff', fontSize: 22, fontWeight: '700' },
   joined: { color: '#888', fontSize: 13, marginTop: 4, marginBottom: 24 },
@@ -71,6 +71,6 @@ const styles = StyleSheet.create({
   cardValue: { color: '#fff', fontSize: 15 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   dot: { width: 10, height: 10, borderRadius: 5 },
-  logoutBtn: { marginTop: 24, backgroundColor: '#2A0000', borderRadius: 12, padding: 16, width: '100%', alignItems: 'center', borderWidth: 1, borderColor: '#FF6B6B44' },
-  logoutText: { color: '#FF6B6B', fontWeight: '700', fontSize: 15 },
+  logoutBtn: { marginTop: 24, backgroundColor: '#2A0000', borderRadius: 12, padding: 16, width: '100%', alignItems: 'center', borderWidth: 1, borderColor: '#0A84FF44' },
+  logoutText: { color: '#0A84FF', fontWeight: '700', fontSize: 15 },
 });

@@ -1,181 +1,102 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import MapView, { Polygon } from 'react-native-maps';
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import MapView, { Polygon, PROVIDER_GOOGLE } from 'react-native-maps';
+import * as Location from 'expo-location';
 import useZoneStore from '../../store/zoneStore';
-import { MOCK_ZONES, MOCK_CURRENT_ZONE } from '../../mock/mockData';
+import { getAllZones } from '../../services/api.service';
+import socketService from '../../services/socket.service';
 
-const mapStyle = [
-  {
-    "elementType": "geometry",
-    "stylers": [
-      {
-        "color": "#f5f5f5"
-      }
-    ]
-  },
-  {
-    "elementType": "labels.icon",
-    "stylers": [
-      {
-        "visibility": "off"
-      }
-    ]
-  },
-  {
-    "elementType": "labels.text.fill",
-    "stylers": [
-      {
-        "color": "#616161"
-      }
-    ]
-  },
-  {
-    "elementType": "labels.text.stroke",
-    "stylers": [
-      {
-        "color": "#f5f5f5"
-      }
-    ]
-  },
-  {
-    "featureType": "administrative.land_parcel",
-    "elementType": "labels.text.fill",
-    "stylers": [
-      {
-        "color": "#bdbdbd"
-      }
-    ]
-  },
-  {
-    "featureType": "poi",
-    "elementType": "geometry",
-    "stylers": [
-      {
-        "color": "#eeeeee"
-      }
-    ]
-  },
-  {
-    "featureType": "poi",
-    "elementType": "labels.text.fill",
-    "stylers": [
-      {
-        "color": "#757575"
-      }
-    ]
-  },
-  {
-    "featureType": "poi.park",
-    "elementType": "geometry",
-    "stylers": [
-      {
-        "color": "#e5e5e5"
-      }
-    ]
-  },
-  {
-    "featureType": "poi.park",
-    "elementType": "labels.text.fill",
-    "stylers": [
-      {
-        "color": "#9e9e9e"
-      }
-    ]
-  },
-  {
-    "featureType": "road",
-    "elementType": "geometry",
-    "stylers": [
-      {
-        "color": "#ffffff"
-      }
-    ]
-  },
-  {
-    "featureType": "road.arterial",
-    "elementType": "labels.text.fill",
-    "stylers": [
-      {
-        "color": "#757575"
-      }
-    ]
-  },
-  {
-    "featureType": "road.highway",
-    "elementType": "geometry",
-    "stylers": [
-      {
-        "color": "#dadada"
-      }
-    ]
-  },
-  {
-    "featureType": "road.highway",
-    "elementType": "labels.text.fill",
-    "stylers": [
-      {
-        "color": "#616161"
-      }
-    ]
-  },
-  {
-    "featureType": "road.local",
-    "elementType": "labels.text.fill",
-    "stylers": [
-      {
-        "color": "#9e9e9e"
-      }
-    ]
-  },
-  {
-    "featureType": "transit.line",
-    "elementType": "geometry",
-    "stylers": [
-      {
-        "color": "#e5e5e5"
-      }
-    ]
-  },
-  {
-    "featureType": "transit.station",
-    "elementType": "geometry",
-    "stylers": [
-      {
-        "color": "#eeeeee"
-      }
-    ]
-  },
-  {
-    "featureType": "water",
-    "elementType": "geometry",
-    "stylers": [
-      {
-        "color": "#c9c9c9"
-      }
-    ]
-  },
-  {
-    "featureType": "water",
-    "elementType": "labels.text.fill",
-    "stylers": [
-      {
-        "color": "#9e9e9e"
-      }
-    ]
-  }
-];
+// Default map style corresponds to standard white UI
+
 
 export default function MapScreen({ navigation }) {
-  const { currentZone, allZones, setCurrentZone, setAllZones } = useZoneStore();
+  const { currentZone, allZones, setCurrentZone, setAllZones, userCount, setUserCount } = useZoneStore();
 
   useEffect(() => {
-    setAllZones(MOCK_ZONES);
-    setCurrentZone(MOCK_CURRENT_ZONE);
+    let locationSub = null;
+    
+    const fetchZones = async () => {
+      try {
+        const res = await getAllZones();
+        const formattedZones = res.data.map(z => ({
+          ...z,
+          coordinates: z.polygon.coordinates[0].map(coord => ({
+            longitude: coord[0],
+            latitude: coord[1]
+          }))
+        }));
+        setAllZones(formattedZones);
+      } catch (e) {
+        console.error('Failed to fetch zones', e);
+      }
+    };
+
+    const setupLocation = async () => {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission requise', 'La localisation est nécessaire pour utiliser NearbyChat.');
+        return;
+      }
+      
+      let loc = await Location.getCurrentPositionAsync({});
+      socketService.emit('updateLocation', { latitude: loc.coords.latitude, longitude: loc.coords.longitude });
+      
+      locationSub = await Location.watchPositionAsync(
+        { accuracy: Location.Accuracy.Balanced, timeInterval: 5000, distanceInterval: 10 },
+        (locUp) => {
+          socketService.emit('updateLocation', { latitude: locUp.coords.latitude, longitude: locUp.coords.longitude });
+        }
+      );
+    };
+
+    fetchZones();
+    setupLocation();
+
+    return () => {
+      if (locationSub) locationSub.remove();
+    };
   }, []);
+
+  // Listen for zone assignments separately so it plays nicely with allZones
+  useEffect(() => {
+    const handleZoneAssigned = ({ zoneId, zoneName, userCount: newCount }) => {
+      if (zoneId) {
+        setUserCount(newCount || 1); // Set the updated global user format
+        const found = allZones.find(z => z.id === zoneId);
+        if (found) {
+          setCurrentZone(found);
+        } else {
+          // Dynamic zone was created! Re-fetch to display it
+          getAllZones()
+            .then(res => {
+              const formattedZones = res.data.map(z => ({
+                ...z,
+                coordinates: z.polygon.coordinates[0].map(coord => ({
+                  longitude: coord[0],
+                  latitude: coord[1]
+                }))
+              }));
+              setAllZones(formattedZones);
+              const newlyFound = formattedZones.find(z => z.id === zoneId);
+              if (newlyFound) setCurrentZone(newlyFound);
+            })
+            .catch(e => console.error(e));
+        }
+      } else {
+        setCurrentZone(null);
+      }
+    };
+    
+    socketService.on('zoneAssigned', handleZoneAssigned);
+    return () => {
+      socketService.off('zoneAssigned', handleZoneAssigned);
+    };
+  }, [allZones, setAllZones, setCurrentZone]);
 
   return (
     <View style={styles.container}>
       <MapView
+        provider={PROVIDER_GOOGLE}
         style={styles.map}
         initialRegion={{
           latitude: 34.020,
@@ -185,7 +106,6 @@ export default function MapScreen({ navigation }) {
         }}
         showsUserLocation={true}
         showsMyLocationButton={true}
-        customMapStyle={mapStyle}
       >
         {allZones.map((zone) => (
           <Polygon
@@ -206,7 +126,7 @@ export default function MapScreen({ navigation }) {
           <View style={[styles.dot, { backgroundColor: currentZone.color }]} />
           <View style={{ flex: 1 }}>
             <Text style={styles.badgeName}>{currentZone.name}</Text>
-            <Text style={styles.badgeUsers}>{currentZone.userCount} personnes ici</Text>
+            <Text style={styles.badgeUsers}>{userCount || currentZone.userCount || 0} personnes ici</Text>
           </View>
           <TouchableOpacity
             style={styles.chatBtn}
@@ -244,7 +164,7 @@ const styles = StyleSheet.create({
   badgeName: { color: '#111', fontWeight: '700', fontSize: 16 },
   badgeUsers: { color: '#888', fontSize: 12, marginTop: 2 },
   chatBtn: {
-    backgroundColor: '#FF6B6B',
+    backgroundColor: '#0A84FF',
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 10,
