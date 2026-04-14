@@ -1,34 +1,29 @@
-import { Controller, Post, Get, Body, UseGuards, Request } from '@nestjs/common';
-import { ZoneService } from './zone.service';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { IsNumber } from 'class-validator';
+import { Controller, Post, Get, Body, UseGuards, Request } from '@nestjs/common'; // Décorateurs NestJS
+import { ZoneService } from './zone.service'; // Import du service Zone
+import { JwtAuthGuard } from '../auth/jwt-auth.guard'; // Protection des routes
+import { IsNumber } from 'class-validator'; // Outil de validation de type
 
-export class ResolveZoneDto {
-  @IsNumber()
-  latitude: number;
+export class ResolveZoneDto { // Modèle de données envoyées par le client
+  @IsNumber() // Vérifie que c'est un nombre
+  latitude: number; // Coordonnée Latitude
 
-  @IsNumber()
-  longitude: number;
+  @IsNumber() // Vérifie que c'est un nombre
+  longitude: number; // Coordonnée Longitude
 }
 
-@UseGuards(JwtAuthGuard)
-@Controller('zone')
-export class ZoneController {
-  constructor(private readonly zoneService: ZoneService) {}
+@UseGuards(JwtAuthGuard) // Applique la sécurité sur tout le contrôleur
+@Controller('zone') // Chemin de base : /zone
+export class ZoneController { // Gère les requêtes HTTP zones
+  constructor(private readonly zoneService: ZoneService) {} // Injecte le service Zone
 
-  // POST /zone/resolve - Retourne la zone correspondante ou vide
-  @Post('resolve')
-  async resolve(@Body() dto: ResolveZoneDto, @Request() req: any) {
-    // req.user est défini par le JwtAuthGuard
-    const zone = await this.zoneService.resolveZone(dto.latitude, dto.longitude, req.user.id);
-    return zone || { message: 'No zone found for these coordinates' };
+  @Post('resolve') // Route POST /zone/resolve
+  async resolve(@Body() dto: ResolveZoneDto, @Request() req: any) { // Trouve la zone d'un point
+    const zone = await this.zoneService.resolveZone(dto.latitude, dto.longitude, req.user.id); // Appel service
+    return zone || { message: 'No zone found for these coordinates' }; // Renvoie la zone ou un message
   }
 
-  // GET /zone/all - Retourne toutes les zones (userCount peut nécessiter l'intégration avec le Gateway WebSocket)
-  @Get('all')
-  async getAllZones() {
-    // Note: Pour une implémentation complète de userCount temps réel, 
-    // on injecterait le ChatGateway pour récupérer l'état des rooms
-    return this.zoneService.getAllZonesWithUserCount();
+  @Get('all') // Route GET /zone/all
+  async getAllZones() { // Liste toutes les zones existantes
+    return this.zoneService.getAllZonesWithUserCount(); // Appel service
   }
 }

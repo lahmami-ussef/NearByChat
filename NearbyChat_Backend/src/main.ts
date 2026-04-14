@@ -1,32 +1,18 @@
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
-import { ValidationPipe } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core'; // Importe le cœur de Nest
+import { AppModule } from './app.module'; // Importe le module racine
+import { ValidationPipe } from '@nestjs/common'; // Importe l'outil de validation
 
-/**
- * Fonction principale qui démarre l'application NestJS.
- */
-async function bootstrap() {
-  // Crée une instance de l'application en utilisant le module racine (AppModule)
-  const app = await NestFactory.create(AppModule);
+async function bootstrap() { // Fonction de démarrage
+  const app = await NestFactory.create(AppModule); // Crée l'instance de l'app
 
-  /**
-   * ValidationPipe : Vérifie automatiquement les données envoyées par l'utilisateur (DTO).
-   * - whitelist: true -> Supprime les champs qui ne sont pas définis dans le DTO.
-   * - transform: true -> Convertit automatiquement les types (ex: string vers number).
-   */
-  app.useGlobalPipes(new ValidationPipe({
-    whitelist: true,
-    transform: true,
+  app.useGlobalPipes(new ValidationPipe({ // Active la validation globale
+    whitelist: true, // Supprime les données non autorisées
+    transform: true, // Convertit auto les types (ex: string -> number)
   }));
 
-  /**
-   * EnableCors : Autorise les requêtes provenant d'autres domaines (utile pour React Native/Web).
-   */
-  app.enableCors();
+  app.enableCors(); // Autorise les requêtes externes (frontend)
   
-  // Définit le port d'écoute (par défaut 3000) et l'adresse IP (0.0.0.0 pour l'accès externe)
-  await app.listen(process.env.PORT || 3000, '0.0.0.0');
+  await app.listen(process.env.PORT || 3000, '0.0.0.0'); // Lance le serveur
 }
 
-// Lancement effectif de l'application
-bootstrap();
+bootstrap(); // Exécute le démarrage

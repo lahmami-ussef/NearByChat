@@ -1,38 +1,24 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
-import { Polygon } from 'geojson'; 
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm'; // Importe les types de TypeORM
+import { Polygon } from 'geojson'; // Importe le type pour les formes GPS
 
-/**
- * L'Entité représente une table dans la base de données PostgreSQL.
- * @Entity('zones') indique que cette classe correspond à la table "zones".
- */
-@Entity('zones')
-export class Zone {
-  // Clé primaire générée automatiquement sous format UUID (identifiant unique)
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+@Entity('zones') // Nom de la table SQL
+export class Zone { // Classe représentant une zone géographique
+  @PrimaryGeneratedColumn('uuid') // ID unique auto-généré
+  id: string; // Identifiant de la zone
 
-  // Nom de la zone (ex: "Zone 33.57,-7.60")
-  @Column()
-  name: string;
+  @Column() // Colonne texte standard
+  name: string; // Nom de la zone
 
-  // Couleur hexadécimale pour l'affichage sur la carte ou l'UI
-  @Column()
-  color: string;
+  @Column() // Colonne texte standard
+  color: string; // Couleur de la zone (hexadécimal)
 
-  /**
-   * Champ spatial (Géométrie) utilisant PostGIS.
-   * - type: 'geometry' -> Stockage de données géographiques.
-   * - spatialFeatureType: 'Polygon' -> La zone est définie par un polygone (surface).
-   * - srid: 4326 -> Utilise le système de coordonnées standard GPS (WGS84).
-   */
-  @Column({
-    type: 'geometry',
-    spatialFeatureType: 'Polygon',
-    srid: 4326,//systeme gps standard
+  @Column({ // Configuration de la colonne PostGIS
+    type: 'geometry', // Type géospatial
+    spatialFeatureType: 'Polygon', // Forme : Polygone (surface)
+    srid: 4326, // Système GPS (WGS84)
   })
-  polygon: Polygon;
+  polygon: Polygon; // Coordonnées GPS de la zone
 
-  // Enregistre automatiquement la date et l'heure de création
-  @CreateDateColumn()
-  createdAt: Date;
+  @CreateDateColumn() // Date auto-remplie à la création
+  createdAt: Date; // Date de création
 }

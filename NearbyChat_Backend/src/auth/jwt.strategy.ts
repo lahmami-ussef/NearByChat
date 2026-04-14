@@ -1,22 +1,19 @@
-import { ExtractJwt, Strategy } from 'passport-jwt';
-import { PassportStrategy } from '@nestjs/passport';
-import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-// comment valider et extraire le token 
-@Injectable()
-export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(private configService: ConfigService) {
-    super({
-      // Extrait le token depuis le header Authorization: Bearer <token>
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      ignoreExpiration: false,
-      secretOrKey: configService.get<string>('JWT_SECRET') || 'secret',
+import { ExtractJwt, Strategy } from 'passport-jwt'; // Outils d'extraction et stratégie JWT
+import { PassportStrategy } from '@nestjs/passport'; // Intégration Passport avec NestJS
+import { Injectable } from '@nestjs/common'; // Décorateur injectable
+import { ConfigService } from '@nestjs/config'; // Accès à la configuration (.env)
+
+@Injectable() // Classe injectable
+export class JwtStrategy extends PassportStrategy(Strategy) { // Logique de validation JWT
+  constructor(private configService: ConfigService) { // Injecte ConfigService
+    super({ // Appelle PassportStrategy avec les options
+      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(), // Extrait le token du header
+      ignoreExpiration: false, // Rejette le token s'il a expiré
+      secretOrKey: configService.get<string>('JWT_SECRET') || 'secret', // Clé de décodage
     });
   }
 
-  // Cette méthode est appelée avec le payload déchiffré du token
-  async validate(payload: any) {
-    // Retourne un objet qui sera assigné à req.user
-    return { id: payload.sub, username: payload.username };
+  async validate(payload: any) { // Valide le contenu du token
+    return { id: payload.sub, username: payload.username }; // Infos mises dans req.user
   }
 }

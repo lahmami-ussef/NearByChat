@@ -1,22 +1,20 @@
-import { Controller, Get, Param, UseGuards } from '@nestjs/common';
-import { MessageService } from './message.service';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Controller, Get, Param, UseGuards } from '@nestjs/common'; // Décorateurs NestJS
+import { MessageService } from './message.service'; // Import du service Message
+import { JwtAuthGuard } from '../auth/jwt-auth.guard'; // Protection par token
 
-@UseGuards(JwtAuthGuard)
-@Controller('messages')
-export class MessageController {
-  constructor(private readonly messageService: MessageService) {}
+@UseGuards(JwtAuthGuard) // Sécurité active pour tout le contrôleur
+@Controller('messages') // Chemin de base : /messages
+export class MessageController { // Gère les requêtes HTTP messages
+  constructor(private readonly messageService: MessageService) {} // Injecte le service Message
 
-  // GET /messages/:zoneId
-  @Get(':zoneId')
-  async getMessages(@Param('zoneId') zoneId: string) {
-    const messages = await this.messageService.getMessagesByZone(zoneId);
-    // Formater la réponse pour inclure le username au lieu de l'entité entière (facultatif mais plus propre)
-    return messages.map(msg => ({
-      id: msg.id,
-      text: msg.text,
-      username: msg.user.username,
-      createdAt: msg.createdAt,
-    })).reverse(); // Pour les afficher du plus ancien au plus récent au frontend
+  @Get(':zoneId') // Route GET /messages/:zoneId
+  async getMessages(@Param('zoneId') zoneId: string) { // Récupère l'historique d'une zone
+    const messages = await this.messageService.getMessagesByZone(zoneId); // Appel service
+    return messages.map(msg => ({ // Formate les données pour le client
+      id: msg.id, // ID message
+      text: msg.text, // Contenu texte
+      username: msg.user.username, // Nom de l'auteur
+      createdAt: msg.createdAt, // Date d'envoi
+    })).reverse(); // Renverse l'ordre pour l'affichage (chronologique)
   }
 }

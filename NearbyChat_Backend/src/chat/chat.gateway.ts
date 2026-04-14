@@ -1,171 +1,153 @@
-import {
-  WebSocketGateway,
-  WebSocketServer,
-  SubscribeMessage,
-  OnGatewayConnection,
-  OnGatewayDisconnect,
-  ConnectedSocket,
-  MessageBody,
+import { // Décorateurs WebSockets
+  WebSocketGateway, // Classe passerelle
+  WebSocketServer, // Lien vers le serveur
+  SubscribeMessage, // Écoute d'un événement
+  OnGatewayConnection, // Hook de connexion
+  OnGatewayDisconnect, // Hook de déconnexion
+  ConnectedSocket, // Récupère le socket client
+  MessageBody, // Récupère les données envoyées
 } from '@nestjs/websockets';
-import { Server, Socket } from 'socket.io';
-import { JwtService } from '@nestjs/jwt';
-import { ZoneService } from '../zone/zone.service';
-import { MessageService } from '../message/message.service';
+import { Server, Socket } from 'socket.io'; // Types de Socket.io
+import { JwtService } from '@nestjs/jwt'; // Service pour le token
+import { ZoneService } from '../zone/zone.service'; // Calcul des zones GPS
+import { MessageService } from '../message/message.service'; // Gestion des messages
 
-@WebSocketGateway({
-  cors: {
-    origin: '*',
+@WebSocketGateway({ // Déclaration du serveur WebSocket
+  cors: { // Configuration du partage de ressources
+    origin: '*', // Autorise tout le monde (client mobile/web)
   },
 })
-export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
-  @WebSocketServer()
-  server: Server;
+export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect { // Passerelle de chat
+  @WebSocketServer() // Instance du serveur
+  server: Server; // Objet serveur global
 
-  // Dictionnaires pour stocker l'état des connexions
-  // clientId -> userId / username / currentZoneId
-  private activeClients = new Map<string, { userId: string; username: string; zoneId?: string }>();
-  // zoneId -> count
-  private zoneUserCounts = new Map<string, number>();
+  private activeClients = new Map<string, { userId: string; username: string; zoneId?: string }>(); // État des clients
+  private zoneUserCounts = new Map<string, number>(); // Nombre d'users par zone
 
-  constructor(
-    private readonly jwtService: JwtService,
-    private readonly zoneService: ZoneService,
-    private readonly messageService: MessageService,
+  constructor( // Injection des dépendances
+    private readonly jwtService: JwtService, // Validation jeton
+    private readonly zoneService: ZoneService, // GPS
+    private readonly messageService: MessageService, // Historique
   ) {}
 
-  // Sécurisation à la connexion (vérifier JWT)
-  async handleConnection(client: Socket) {
+  async handleConnection(client: Socket) { // Quand un client se connecte
     try {
-      const token = client.handshake.auth.token?.split(' ')[1] || client.handshake.auth.token; // format "Bearer token" ou juste "token"
-      if (!token) throw new Error('No token provided');
+      const token = client.handshake.auth.token?.split(' ')[1] || client.handshake.auth.token; // Extraction token
+      if (!token) throw new Error('No token provided'); // Erreur si vide
       
-      const payload = this.jwtService.verify(token);
-      this.activeClients.set(client.id, {
-        userId: payload.sub,
-        username: payload.username,
+      const payload = this.jwtService.verify(token); // Vérification signature
+      this.activeClients.set(client.id, { // Enregistrement client
+        userId: payload.sub, // ID utilisateur
+        username: payload.username, // Nom utilisateur
       });
-      console.log(`Client connected: ${payload.username} (${client.id})`);
+      console.log(`Client connected: ${payload.username} (${client.id})`); // Log console
     } catch (e) {
-      console.log('Unauthorized connection attempt:', e.message);
-      client.disconnect();
+      console.log('Unauthorized connection attempt:', e.message); // Log erreur
+      client.disconnect(); // Déconnexion forcée
     }
   }
 
-  handleDisconnect(client: Socket) {
-    const clientData = this.activeClients.get(client.id);
-    if (clientData) {
-      if (clientData.zoneId) {
-        this.leaveZone(client, clientData.zoneId, clientData.username);
+  handleDisconnect(client: Socket) { // Quand un client quitte
+    const clientData = this.activeClients.get(client.id); // Récupère ses infos
+    if (clientData) { // Si connu
+      if (clientData.zoneId) { // S'il était dans une zone
+        this.leaveZone(client, clientData.zoneId, clientData.username); // Quitte proprement
       }
-      this.activeClients.delete(client.id);
-      console.log(`Client disconnected: ${clientData.username} (${client.id})`);
+      this.activeClients.delete(client.id); // Retire de la liste
+      console.log(`Client disconnected: ${clientData.username} (${client.id})`); // Log console
     }
   }
 
-  // updateLocation event -> Résout la zone et gère le changement de room
-  @SubscribeMessage('updateLocation')
+  @SubscribeMessage('updateLocation') // Événement GPS reçu
   async handleUpdateLocation(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() body: { latitude: number; longitude: number },
+    @ConnectedSocket() client: Socket, // Socket client
+    @MessageBody() body: { latitude: number; longitude: number }, // Coordonnées reçues
   ) {
-    const clientData = this.activeClients.get(client.id);
-    if (!clientData) return;
+    const clientData = this.activeClients.get(client.id); // Infos client
+    if (!clientData) return; // Sécurité
 
     try {
-      // Résolution de la zone côté backend (sécurité)
-      const newZone = await this.zoneService.resolveZone(body.latitude, body.longitude, clientData.userId);
+      const newZone = await this.zoneService.resolveZone(body.latitude, body.longitude, clientData.userId); // Calcul zone
 
-      const oldZoneId = clientData.zoneId;
-      const newZoneId = newZone?.id;
+      const oldZoneId = clientData.zoneId; // Ancienne zone
+      const newZoneId = newZone?.id; // Nouvelle zone
 
-      // Si changement de zone (y compris passage à aucune zone)
-      if (oldZoneId !== newZoneId) {
-        if (oldZoneId) {
-          this.leaveZone(client, oldZoneId, clientData.username);
+      if (oldZoneId !== newZoneId) { // Si changement réel
+        if (oldZoneId) { // Si quitté zone
+          this.leaveZone(client, oldZoneId, clientData.username); // Notification départ
         }
         
-        if (newZoneId) {
-          this.joinZone(client, newZoneId, newZone.name, clientData.username);
-        } else {
-          // L'utilisateur n'est plus dans aucune zone (optionnel, on peut le notifier)
-          clientData.zoneId = undefined;
-          client.emit('zoneAssigned', { zoneId: null, zoneName: 'Outside Zones' });
+        if (newZoneId) { // Si entrée zone
+          this.joinZone(client, newZoneId, newZone.name, clientData.username); // Notification arrivée
+        } else { // Si zone déserte
+          clientData.zoneId = undefined; // Reset
+          client.emit('zoneAssigned', { zoneId: null, zoneName: 'Outside Zones' }); // Notification client
         }
       }
     } catch (e) {
-      client.emit('error', { message: e.message });
+      client.emit('error', { message: e.message }); // Notification erreur
     }
   }
 
-  // sendMessage event -> Enregistre et broadcast
-  @SubscribeMessage('sendMessage')
+  @SubscribeMessage('sendMessage') // Message reçu du client
   async handleSendMessage(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() body: { text: string },
+    @ConnectedSocket() client: Socket, // Client expéditeur
+    @MessageBody() body: { text: string }, // Contenu texte
   ) {
-    const clientData = this.activeClients.get(client.id);
-    if (!clientData || !clientData.zoneId) return;
+    const clientData = this.activeClients.get(client.id); // Infos client
+    if (!clientData || !clientData.zoneId) return; // Sécurité (doit être en zone)
 
-    // Sauvegarde en DB
-    const msgh = await this.messageService.createMessage(
-      body.text,
-      clientData.userId,
-      clientData.zoneId,
+    const msgh = await this.messageService.createMessage( // Sauvegarde SQL
+      body.text, // Texte
+      clientData.userId, // Auteur
+      clientData.zoneId, // Zone
     );
 
-    // Broadcast aux membres de la zone (sauf l'expéditeur qui l'affiche déjà localement)
-    client.to(clientData.zoneId).emit('newMessage', {
-      username: clientData.username,
-      text: msgh.text,
-      createdAt: msgh.createdAt,
+    client.to(clientData.zoneId).emit('newMessage', { // Diffuse aux autres de la zone
+      username: clientData.username, // Qui ?
+      text: msgh.text, // Quoi ?
+      createdAt: msgh.createdAt, // Quand ?
     });
   }
 
-  // typing event -> Broadcast aux autres
-  @SubscribeMessage('typing')
+  @SubscribeMessage('typing') // Utilisateur "en train d'écrire"
   handleTyping(@ConnectedSocket() client: Socket) {
-    const clientData = this.activeClients.get(client.id);
-    if (clientData && clientData.zoneId) {
-      // Envoyer à tous sauf à l'expéditeur
-      client.to(clientData.zoneId).emit('userTyping', {
-        username: clientData.username,
+    const clientData = this.activeClients.get(client.id); // Infos client
+    if (clientData && clientData.zoneId) { // Si en zone
+      client.to(clientData.zoneId).emit('userTyping', { // Notifie les autres
+        username: clientData.username, // Qui ?
       });
     }
   }
 
-  // --- Helpers ---
-  private joinZone(client: Socket, zoneId: string, zoneName: string, username: string) {
-    client.join(zoneId);
+  private joinZone(client: Socket, zoneId: string, zoneName: string, username: string) { // Logique entrée
+    client.join(zoneId); // Entre dans la salle virtuelle
     
-    // MAJ de l'état
-    const clientData = this.activeClients.get(client.id);
-    clientData.zoneId = zoneId;
+    const clientData = this.activeClients.get(client.id); // Infos client
+    clientData.zoneId = zoneId; // MAJ zone client
     
-    let count = this.zoneUserCounts.get(zoneId) || 0;
-    count += 1;
-    this.zoneUserCounts.set(zoneId, count);
+    let count = this.zoneUserCounts.get(zoneId) || 0; // Compte actuel
+    count += 1; // Incrémente
+    this.zoneUserCounts.set(zoneId, count); // MAJ compte
 
-    // Retour au client
-    client.emit('zoneAssigned', { zoneId, zoneName, userCount: count });
+    client.emit('zoneAssigned', { zoneId, zoneName, userCount: count }); // Notifie le client entré
     
-    // Broadcast notification "userJoined"
-    this.server.to(zoneId).emit('userJoined', {
-      username,
-      userCount: count,
+    this.server.to(zoneId).emit('userJoined', { // Notifie tout le monde
+      username, // Qui ?
+      userCount: count, // Combien ?
     });
   }
 
-  private leaveZone(client: Socket, zoneId: string, username: string) {
-    client.leave(zoneId);
+  private leaveZone(client: Socket, zoneId: string, username: string) { // Logique départ
+    client.leave(zoneId); // Sort de la salle virtuelle
     
-    let count = this.zoneUserCounts.get(zoneId) || 1;
-    count -= 1;
-    this.zoneUserCounts.set(zoneId, count);
+    let count = this.zoneUserCounts.get(zoneId) || 1; // Compte actuel
+    count -= 1; // Décrémente
+    this.zoneUserCounts.set(zoneId, count); // MAJ compte
 
-    // Broadcast notification "userLeft"
-    this.server.to(zoneId).emit('userLeft', {
-      username,
-      userCount: count,
+    this.server.to(zoneId).emit('userLeft', { // Notifie tout le monde
+      username, // Qui ?
+      userCount: count, // Combien ?
     });
   }
 }

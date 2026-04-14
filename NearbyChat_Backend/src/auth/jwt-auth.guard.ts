@@ -1,6 +1,5 @@
-import { Injectable } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
+import { Injectable } from '@nestjs/common'; // Décorateur injectable
+import { AuthGuard } from '@nestjs/passport'; // Outil de garde Passport
 
-// Gardien utilisé pour protéger les routes REST
-@Injectable()
-export class JwtAuthGuard extends AuthGuard('jwt') {}
+@Injectable() // Classe injectable
+export class JwtAuthGuard extends AuthGuard('jwt') {} // "Vigile" bloquant si pas de JWT valide

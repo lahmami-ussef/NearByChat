@@ -1,23 +1,11 @@
-import { IsString, MinLength } from 'class-validator';
+import { IsString, MinLength } from 'class-validator'; // Outils de validation
 
-/**
- * DTO (Data Transfer Object) : Définit la forme des données qui arrivent dans les requêtes.
- * Il sert à la fois à typer le code et à valider les entrées utilisateur.
- */
-export class AuthDto {
-  /**
-   * Le nom d'utilisateur doit être une chaîne de caractères (IsString)
-   * et faire au moins 3 caractères (MinLength).
-   */
-  @IsString()
-  @MinLength(3, { message: 'Username must be at least 3 characters' })
-  username: string;
+export class AuthDto { // Modèle de données pour l'authentification
+  @IsString() // Doit être du texte
+  @MinLength(3, { message: 'Username must be at least 3 characters' }) // Minimum 3 caractères
+  username: string; // Nom d'utilisateur
 
-  /**
-   * Le mot de passe doit être une chaîne (IsString)
-   * et faire au moins 6 caractères (MinLength).
-   */
-  @IsString()
-  @MinLength(6, { message: 'Password must be at least 6 characters' })
-  password: string;
+  @IsString() // Doit être du texte
+  @MinLength(6, { message: 'Password must be at least 6 characters' }) // Minimum 6 caractères
+  password: string; // Mot de passe
 }

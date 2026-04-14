@@ -1,20 +1,19 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm'; // Importe les outils de TypeORM
 
-// Entité TypeORM représentant la table "users"
-@Entity('users')
-export class User {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+@Entity('users') // Nom de la table en base de données
+export class User { // Classe représentant un utilisateur
+  @PrimaryGeneratedColumn('uuid') // Clé primaire auto-générée (format UUID)
+  id: string; // Identifiant unique
 
-  @Column({ unique: true })
-  username: string;
+  @Column({ unique: true }) // Colonne SQL, doit être unique
+  username: string; // Nom d'affichage de l'utilisateur
 
-  @Column()
-  password?: string; // Optionnel car on ne le retourne pas toujours
+  @Column() // Colonne SQL standard
+  password?: string; // Mot de passe (optionnel dans les retours API)
 
-  @Column({ nullable: true })
-  avatarUrl: string;
+  @Column({ nullable: true }) // Colonne SQL pouvant être vide
+  avatarUrl: string; // Lien vers l'image de profil
 
-  @CreateDateColumn()
-  createdAt: Date;
+  @CreateDateColumn() // Remplit auto la date de création
+  createdAt: Date; // Date d'inscription
 }

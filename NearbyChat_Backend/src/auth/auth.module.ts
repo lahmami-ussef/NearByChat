@@ -1,27 +1,27 @@
-import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
-import { PassportModule } from '@nestjs/passport';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { AuthService } from './auth.service';
-import { AuthController } from './auth.controller';
-import { UserModule } from '../user/user.module';
-import { JwtStrategy } from './jwt.strategy';
+import { Module } from '@nestjs/common'; // Décorateur module
+import { JwtModule } from '@nestjs/jwt'; // Module JWT pour Nest
+import { PassportModule } from '@nestjs/passport'; // Module Passport pour Nest
+import { ConfigModule, ConfigService } from '@nestjs/config'; // Gestion config
+import { AuthService } from './auth.service'; // Service auth local
+import { AuthController } from './auth.controller'; // Contrôleur auth local
+import { UserModule } from '../user/user.module'; // Import du module User
+import { JwtStrategy } from './jwt.strategy'; // Stratégie de validation
 
-@Module({
+@Module({ // Déclaration module auth
   imports: [
-    UserModule,
-    PassportModule,
-    JwtModule.registerAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: async (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET') || 'secret',
-        signOptions: { expiresIn: '7d' }, // Expiration du token (7 jours par exp)
+    UserModule, // Nécessaire pour chercher les users
+    PassportModule, // Nécessaire pour les stratégies
+    JwtModule.registerAsync({ // Config asynchrone du JWT
+      imports: [ConfigModule], // Import config
+      inject: [ConfigService], // Injecte le service config
+      useFactory: async (configService: ConfigService) => ({ // Fabrique la config
+        secret: configService.get<string>('JWT_SECRET') || 'secret', // Clé secrète
+        signOptions: { expiresIn: '7d' }, // Durée de validité
       }),
     }),
   ],
-  providers: [AuthService, JwtStrategy],
-  controllers: [AuthController],
-  exports: [AuthService, JwtModule],
+  providers: [AuthService, JwtStrategy], // Services et stratégies locaux
+  controllers: [AuthController], // Contrôleur local
+  exports: [AuthService, JwtModule], // Partage auth avec le reste
 })
-export class AuthModule {}
+export class AuthModule {} // Classe module auth

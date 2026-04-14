@@ -1,25 +1,23 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
-import { User } from '../user/user.entity';
-import { Zone } from '../zone/zone.entity';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm'; // Outils TypeORM
+import { User } from '../user/user.entity'; // Import de l'auteur
+import { Zone } from '../zone/zone.entity'; // Import de la zone
 
-@Entity('messages')
-export class Message {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+@Entity('messages') // Nom de la table SQL
+export class Message { // Classe représentant un message
+  @PrimaryGeneratedColumn('uuid') // ID unique auto-généré
+  id: string; // Identifiant du message
 
-  @Column('text')
-  text: string;
+  @Column('text') // Colonne de texte long
+  text: string; // Contenu du message
 
-  // Relation ManyToOne: un message appartient à un utilisateur
-  @ManyToOne(() => User)
-  @JoinColumn({ name: 'userId' })
-  user: User;
+  @ManyToOne(() => User) // Un message a un seul auteur
+  @JoinColumn({ name: 'userId' }) // Nom de la colonne de liaison
+  user: User; // Objet User associé
 
-  // Relation ManyToOne: un message appartient à une zone
-  @ManyToOne(() => Zone)
-  @JoinColumn({ name: 'zoneId' })
-  zone: Zone;
+  @ManyToOne(() => Zone) // Un message appartient à une seule zone
+  @JoinColumn({ name: 'zoneId' }) // Nom de la colonne de liaison
+  zone: Zone; // Objet Zone associé
 
-  @CreateDateColumn()
-  createdAt: Date;
+  @CreateDateColumn() // Date auto-générée
+  createdAt: Date; // Date d'envoi
 }
