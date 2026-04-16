@@ -5,7 +5,8 @@ import { MessageModule } from '../message/message.module'; // Import nécessaire
 import { AuthModule } from '../auth/auth.module'; // Import nécessaire pour la sécurité (JWT)
 
 @Module({ // Déclaration du module de Chat
-  imports: [ZoneModule, MessageModule, AuthModule], // Dépendances externes nécessaires
+  imports: [ZoneModule, MessageModule, AuthModule],
+   // Dépendances externes nécessaires
   providers: [ChatGateway], // Déclare la passerelle comme fournisseur
 })
 export class ChatModule {} // Classe du module Chat

@@ -1,4 +1,5 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm'; // Importe les outils de TypeORM
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
+ // Importe les outils de TypeORM
 
 @Entity('users') // Nom de la table en base de données
 export class User { // Classe représentant un utilisateur

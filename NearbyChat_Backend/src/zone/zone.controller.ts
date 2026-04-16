@@ -18,7 +18,8 @@ export class ZoneController { // Gère les requêtes HTTP zones
 
   @Post('resolve') // Route POST /zone/resolve
   async resolve(@Body() dto: ResolveZoneDto, @Request() req: any) { // Trouve la zone d'un point
-    const zone = await this.zoneService.resolveZone(dto.latitude, dto.longitude, req.user.id); // Appel service
+    const zone = await this.zoneService.resolveZone(dto.latitude, dto.longitude, req.user.id); 
+    // Appel service
     return zone || { message: 'No zone found for these coordinates' }; // Renvoie la zone ou un message
   }
 

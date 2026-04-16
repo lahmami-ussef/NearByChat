@@ -17,11 +17,13 @@ import { MessageService } from '../message/message.service'; // Gestion des mess
     origin: '*', // Autorise tout le monde (client mobile/web)
   },
 })
-export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect { // Passerelle de chat
+export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
+   // Passerelle de chat
   @WebSocketServer() // Instance du serveur
   server: Server; // Objet serveur global
 
-  private activeClients = new Map<string, { userId: string; username: string; zoneId?: string }>(); // État des clients
+  private activeClients = new Map<string, { userId: string; username: string; zoneId?: string }>(); 
+  // État des clients
   private zoneUserCounts = new Map<string, number>(); // Nombre d'users par zone
 
   constructor( // Injection des dépendances
@@ -32,7 +34,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect { /
 
   async handleConnection(client: Socket) { // Quand un client se connecte
     try {
-      const token = client.handshake.auth.token?.split(' ')[1] || client.handshake.auth.token; // Extraction token
+      const token = client.handshake.auth.token?.split(' ')[1] || client.handshake.auth.token;
+      // Extraction token
       if (!token) throw new Error('No token provided'); // Erreur si vide
       
       const payload = this.jwtService.verify(token); // Vérification signature

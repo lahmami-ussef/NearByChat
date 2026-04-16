@@ -1,7 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common'; // Importe les exceptions et le décorateur
-import { InjectRepository } from '@nestjs/typeorm'; // Outil pour injecter le dépôt DB
-import { Repository } from 'typeorm'; // Type représentant un dépôt SQL
-import { User } from './user.entity'; // Importe l'entité User
+import { Injectable, NotFoundException } from '@nestjs/common';
+ // Importe les exceptions et le décorateur
+import { InjectRepository } from '@nestjs/typeorm';
+ // Outil pour injecter le dépôt DB
+import { Repository } from 'typeorm'; 
+// Type représentant un dépôt SQL
+import { User } from './user.entity'; 
+// Importe l'entité User
 
 @Injectable() // Rend la classe injectable ailleurs
 export class UserService { // Logique métier pour les utilisateurs

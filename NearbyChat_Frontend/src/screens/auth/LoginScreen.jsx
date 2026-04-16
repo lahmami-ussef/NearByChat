@@ -3,38 +3,52 @@ import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform,
 } from 'react-native';
+// Store pour gérer l'état de l'utilisateur
 import useAuthStore from '../../store/authStore';
-import { MOCK_USER } from '../../mock/mockData';
-
-// ─── MOCK MODE ─────────────────────────────────────────────────────────────
-// Quand le backend est prêt, remplace handleLogin par :
-//   const res = await loginUser({ username, password });
-//   setToken(res.data.token);  setUser(res.data.user);
+// Services API et Socket
 import { loginUser, setAuthToken } from '../../services/api.service';
 import socketService from '../../services/socket.service';
 
+/**
+ * LoginScreen : Écran de connexion de l'application.
+ */
 export default function LoginScreen({ navigation }) {
+  // --- ÉTATS LOCAUX ---
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false); // Pour afficher le spinner lors du chargement
+  const [error, setError] = useState('');         // Pour afficher les messages d'erreur
+  
+  // Accès aux actions du store global
   const { setUser, setToken } = useAuthStore();
 
+  /**
+   * Gère la tentative de connexion
+   */
   const handleLogin = async () => {
+    // Vérification basique des champs
     if (!username || !password) { setError('Remplis tous les champs'); return; }
-    setLoading(true); setError('');
+    
+    setLoading(true); 
+    setError('');
+    
     try {
-      //send a login request to the backend with the username and password 
+      // 1. Appel API au backend NestJS (POST /auth/login)
       const res = await loginUser({ username, password });
-      //attach the received JWT to future API requests and save user info in the store 
+      
+      // 2. Configuration du token JWT pour toutes les futures requêtes Axios
       setAuthToken(res.data.access_token);
+      
+      // 3. Sauvegarde du token et des infos user dans le store global (Zustand)
       setToken(res.data.access_token);
       setUser(res.data.user);
-      // connect the socket with the new token to receive real-time updates 
+      
+      // 4. Initialisation de la connexion Socket.io avec le nouveau token
       socketService.connect(res.data.access_token);
       
       setLoading(false);
     } catch (err) {
+      // Gestion des erreurs (identifiants incorrects, serveur hors ligne, etc.)
       setError(err.response?.data?.message || 'Erreur de connexion');
       setLoading(false);
     }
@@ -46,40 +60,59 @@ export default function LoginScreen({ navigation }) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <View style={styles.header}>
+        {/* En-tête avec Logo et Titre */}
         <Text style={styles.logo}>📍</Text>
         <Text style={styles.title}>NearbyChat</Text>
         <Text style={styles.subtitle}>Discute avec les gens près de toi</Text>
       </View>
 
       <View style={styles.form}>
-        
+        {/* Affichage des erreurs si elles existent */}
         {error ? <Text style={styles.error}>{error}</Text> : null}
+        
+        {/* Champs de saisie */}
         <TextInput
           style={styles.input} 
           placeholder="Nom d'utilisateur"
-          placeholderTextColor="#888" value={username}
-          onChangeText={setUsername} autoCapitalize="none"
+          placeholderTextColor="#888" 
+          value={username}
+          onChangeText={setUsername} 
+          autoCapitalize="none"
         />
         <TextInput
           style={styles.input} 
           placeholder="Mot de passe"
-          placeholderTextColor="#888" value={password}
-          onChangeText={setPassword} secureTextEntry
+          placeholderTextColor="#888" 
+          value={password}
+          onChangeText={setPassword} 
+          secureTextEntry // Cache les caractères du mot de passe
         />
+
+        {/* Bouton de connexion */}
         <TouchableOpacity 
-        style={styles.btn} 
-        onPress={handleLogin} 
-        disabled={loading}>
-          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Se connecter</Text>}
+          style={styles.btn} 
+          onPress={handleLogin} 
+          disabled={loading} // Désactivé pendant le chargement
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.btnText}>Se connecter</Text>
+          )}
         </TouchableOpacity>
+
+        {/* Lien vers l'inscription */}
         <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-          <Text style={styles.link}>Pas de compte ? <Text style={styles.linkBold}>S'inscrire</Text></Text>
+          <Text style={styles.link}>
+            Pas de compte ? <Text style={styles.linkBold}>S'inscrire</Text>
+          </Text>
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
   );
 }
 
+// styles : Design moderne et sombre (Dark Mode)
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0D0D0D', justifyContent: 'center', padding: 24 },
   header: { alignItems: 'center', marginBottom: 40 },
@@ -94,3 +127,4 @@ const styles = StyleSheet.create({
   linkBold: { color: '#0A84FF', fontWeight: '700' },
   error: { color: '#0A84FF', textAlign: 'center', fontSize: 13 },
 });
+

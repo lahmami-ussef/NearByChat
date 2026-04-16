@@ -1,23 +1,33 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+// Importation de MapView pour afficher Google Maps et Polygon pour dessiner des zones
 import MapView, { Polygon, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
+// Accès aux données globales (zones et utilisateur actuel)
 import useZoneStore from '../../store/zoneStore';
+// Services de communication
 import { getAllZones } from '../../services/api.service';
 import socketService from '../../services/socket.service';
 
-// Default map style corresponds to standard white UI
-
-
+/**
+ * MapScreen : L'écran principal de l'application.
+ * Affiche la position de l'utilisateur et les zones de chat à proximité.
+ */
 export default function MapScreen({ navigation }) {
+  // Récupération des données du store global
   const { currentZone, allZones, setCurrentZone, setAllZones, userCount, setUserCount } = useZoneStore();
 
+  /**
+   * Effet initial : Charge les zones et démarre la géolocalisation.
+   */
   useEffect(() => {
     let locationSub = null;
     
+    // Fonction pour récupérer toutes les zones définies sur le serveur
     const fetchZones = async () => {
       try {
         const res = await getAllZones();
+        // Formate les données GeoJSON du backend en format compatible avec react-native-maps
         const formattedZones = res.data.map(z => ({
           ...z,
           coordinates: z.polygon.coordinates[0].map(coord => ({
@@ -31,20 +41,32 @@ export default function MapScreen({ navigation }) {
       }
     };
 
+    // Fonction pour activer le GPS et surveiller les déplacements
     const setupLocation = async () => {
+      // 1. Demande la permission à l'utilisateur
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Permission requise', 'La localisation est nécessaire pour utiliser NearbyChat.');
         return;
       }
       
+      // 2. Récupère la position initiale
       let loc = await Location.getCurrentPositionAsync({});
-      socketService.emit('updateLocation', { latitude: loc.coords.latitude, longitude: loc.coords.longitude });
+      // Informe immédiatement le backend de la position via WebSocket
+      socketService.emit('updateLocation', { 
+        latitude: loc.coords.latitude, 
+        longitude: loc.coords.longitude 
+      });
       
+      // 3. Surveille les déplacements toutes les 5 secondes ou 10 mètres
       locationSub = await Location.watchPositionAsync(
         { accuracy: Location.Accuracy.Balanced, timeInterval: 5000, distanceInterval: 10 },
         (locUp) => {
-          socketService.emit('updateLocation', { latitude: locUp.coords.latitude, longitude: locUp.coords.longitude });
+          // Met à jour la position sur le serveur pour potentiellement changer de zone
+          socketService.emit('updateLocation', { 
+            latitude: locUp.coords.latitude, 
+            longitude: locUp.coords.longitude 
+          });
         }
       );
     };
@@ -52,21 +74,26 @@ export default function MapScreen({ navigation }) {
     fetchZones();
     setupLocation();
 
+    // Nettoyage lors de la fermeture de l'écran
     return () => {
       if (locationSub) locationSub.remove();
     };
   }, []);
 
-  // Listen for zone assignments separately so it plays nicely with allZones
+  /**
+   * Écoute en permanence si le serveur nous assigne à une nouvelle zone.
+   */
   useEffect(() => {
     const handleZoneAssigned = ({ zoneId, zoneName, userCount: newCount }) => {
       if (zoneId) {
-        setUserCount(newCount || 1); // Set the updated global user format
+        // Met à jour le nombre d'utilisateurs dans la zone
+        setUserCount(newCount || 1);
+        // Cherche les détails de la zone dans la liste locale
         const found = allZones.find(z => z.id === zoneId);
         if (found) {
-          setCurrentZone(found);
+          setCurrentZone(found); // L'utilisateur est entré dans une zone connue
         } else {
-          // Dynamic zone was created! Re-fetch to display it
+          // Si la zone n'existe pas localement (zone dynamique), on recharge tout
           getAllZones()
             .then(res => {
               const formattedZones = res.data.map(z => ({
@@ -83,11 +110,14 @@ export default function MapScreen({ navigation }) {
             .catch(e => console.error(e));
         }
       } else {
+        // L'utilisateur est sorti de toute zone (zone neutre)
         setCurrentZone(null);
       }
     };
     
+    // S'abonne à l'événement du socket
     socketService.on('zoneAssigned', handleZoneAssigned);
+    
     return () => {
       socketService.off('zoneAssigned', handleZoneAssigned);
     };
@@ -95,32 +125,34 @@ export default function MapScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
+      {/* Composant Carte de Google */}
       <MapView
         provider={PROVIDER_GOOGLE}
         style={styles.map}
         initialRegion={{
-          latitude: 34.020,
+          latitude: 34.020, // Position par défaut (ex: Rabat)
           longitude: -6.841,
           latitudeDelta: 0.08,
           longitudeDelta: 0.08,
         }}
-        showsUserLocation={true}
-        showsMyLocationButton={true}
+        showsUserLocation={true}    // Affiche le petit point bleu pour l'utilisateur
+        showsMyLocationButton={true} // Affiche le bouton "Ma position"
       >
+        {/* Dessine chaque zone enregistrée sur la carte */}
         {allZones.map((zone) => (
           <Polygon
             key={zone.id}
             coordinates={zone.coordinates}
-            fillColor={zone.color + '55'}
-            strokeColor={zone.color}
+            fillColor={zone.color + '55'} // Couleur de remplissage (semi-transparente)
+            strokeColor={zone.color}       // Couleur de la bordure
             strokeWidth={3}
             tappable={true}
-            onPress={() => setCurrentZone(zone)}
+            onPress={() => setCurrentZone(zone)} // Sélection manuelle au clic
           />
         ))}
       </MapView>
 
-      {/* Zone badge en bas */}
+      {/* Badge flottant qui apparaît quand l'utilisateur est dans une zone */}
       {currentZone && (
         <View style={[styles.badge, { borderLeftColor: currentZone.color }]}>
           <View style={[styles.dot, { backgroundColor: currentZone.color }]} />
@@ -128,6 +160,7 @@ export default function MapScreen({ navigation }) {
             <Text style={styles.badgeName}>{currentZone.name}</Text>
             <Text style={styles.badgeUsers}>{userCount || currentZone.userCount || 0} personnes ici</Text>
           </View>
+          {/* Bouton pour aller au chat de cette zone */}
           <TouchableOpacity
             style={styles.chatBtn}
             onPress={() => navigation.navigate('Chat')}
@@ -140,6 +173,7 @@ export default function MapScreen({ navigation }) {
   );
 }
 
+// Styles pour un affichage propre et moderne
 const styles = StyleSheet.create({
   container: { flex: 1 },
   map: { flex: 1 },
@@ -155,8 +189,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     borderLeftWidth: 5,
-    elevation: 8,
-    shadowColor: '#000',
+    elevation: 8, // Ombre sur Android
+    shadowColor: '#000', // Ombre sur iOS
     shadowOpacity: 0.15,
     shadowRadius: 10,
   },

@@ -5,24 +5,28 @@ import { Zone } from './zone.entity'; // Entité Zone
 
 @Injectable() // Classe injectable
 export class ZoneService { // Service gérant les zones GPS
-  private userLocations = new Map<string, { lat: number; lon: number; timestamp: number }>(); // Stockage tempo des positions
+  private userLocations = new Map<string, { lat: number; lon: number; timestamp: number }>(); 
+  // Stockage tempo des positions
 
   constructor(
     @InjectRepository(Zone) // Injection de la table zones
     private readonly zoneRepository: Repository<Zone>, // Accès aux données
   ) {}
 
-  async resolveZone(latitude: number, longitude: number, userId?: string): Promise<Zone | null> { // Trouve ou crée une zone
+  async resolveZone(latitude: number, longitude: number, userId?: string): Promise<Zone | null> {
+     // Trouve ou crée une zone
     if (userId) { // Si un utilisateur est connecté
       if (!this.validateSpeed(userId, latitude, longitude)) { // Vérifie s'il ne triche pas (vitesse)
         throw new BadRequestException('Vitesse trop élevée - coordonnées invalides'); // Erreur si TP
       }
-      this.userLocations.set(userId, { lat: latitude, lon: longitude, timestamp: Date.now() }); // Sauve la position
+      this.userLocations.set(userId, { lat: latitude, lon: longitude, timestamp: Date.now() });
+       // Sauve la position
     }
 
     let zone = await this.zoneRepository // Cherche en base
       .createQueryBuilder('zone') // Outil de requête complexe
-      .where("ST_Contains(zone.polygon, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326))", { // Fonctions spatiales SQL
+      .where("ST_Contains(zone.polygon, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326))", {
+         // Fonctions spatiales SQL
         lon: longitude, // Paramètre longitude
         lat: latitude, // Paramètre latitude
       })
@@ -62,7 +66,8 @@ export class ZoneService { // Service gérant les zones GPS
     return zone; // Renvoie la zone trouvée ou créée
   }
 
-  async getAllZonesWithUserCount(activeUsersByZone: Record<string, number> = {}): Promise<any[]> { // Liste zones + users
+  async getAllZonesWithUserCount(activeUsersByZone: Record<string, number> = {}): Promise<any[]> {
+     // Liste zones + users
     const zones = await this.zoneRepository.find(); // Récupère tout
     return zones.map(zone => ({ // Formate le résultat
       ...zone, // Données de la zone
@@ -88,7 +93,8 @@ export class ZoneService { // Service gérant les zones GPS
     return speedKmh <= 200; // Limite à 200 km/h
   }
 
-  private getDistanceFromLatLonInM(lat1: number, lon1: number, lat2: number, lon2: number) { // Calcul distance GPS
+  private getDistanceFromLatLonInM(lat1: number, lon1: number, lat2: number, lon2: number) { 
+    // Calcul distance GPS
     const R = 6371e3; // Rayon de la terre
     const dLat = this.deg2rad(lat2 - lat1); // Diff latitude
     const dLon = this.deg2rad(lon2 - lon1); // Diff longitude

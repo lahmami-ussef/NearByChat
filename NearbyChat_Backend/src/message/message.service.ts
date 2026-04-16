@@ -18,14 +18,17 @@ export class MessageService { // Service gérant les messages
       user: { id: userId }, // Lien avec l'auteur
       zone: { id: zoneId }, // Lien avec la zone
     });
-    const savedMessage = await this.messageRepository.save(message); // Sauvegarde SQL
-    return this.messageRepository.findOneOrFail({ // Récupère le message complet
+    const savedMessage = await this.messageRepository.save(message);
+    // Sauvegarde SQL
+    return this.messageRepository.findOneOrFail({ 
+      // Récupère le message complet
       where: { id: savedMessage.id }, // Par son ID
       relations: ['user'], // Avec les infos de l'auteur
     });
   }
 
-  async getMessagesByZone(zoneId: string): Promise<Message[]> { // Récupère l'historique
+  async getMessagesByZone(zoneId: string): Promise<Message[]> { 
+    // Récupère l'historique
     return this.messageRepository.find({ // Cherche en base
       where: { zone: { id: zoneId } }, // Pour une zone précise
       relations: ['user'], // Avec les noms d'auteurs
@@ -36,7 +39,8 @@ export class MessageService { // Service gérant les messages
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT) // Tâche automatique (minuit)
   async clearOldMessages() { // Supprime les vieux messages
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000); // Calcul date (-24h)
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000); 
+    // Calcul date (-24h)
     await this.messageRepository.delete({ // Suppression SQL
       createdAt: LessThan(twentyFourHoursAgo), // Si plus vieux que 24h
     });
